@@ -25,13 +25,13 @@ export async function fetchNotes(
     },
   });
 
-  const filteredNotes = response.data.notes.filter((note) =>
-    note.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // const filteredNotes = response.data.notes.filter((note) =>
+  //   note.title.toLowerCase().includes(searchQuery.toLowerCase())
+  // );
 
   return {
     ...response.data,
-    notes: filteredNotes,
+    // notes: filteredNotes,
   };
 }
 
