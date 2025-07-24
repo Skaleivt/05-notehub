@@ -2,50 +2,55 @@ import css from "../NoteForm/NoteForm.module.css";
 import { Formik, Form, Field, ErrorMessage } from "formik";
 import type { FormikHelpers } from "formik";
 import * as Yup from "yup";
-
-export interface OrderFormValues {
-  title: string;
-  content: string;
-  tag: string;
-}
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { createNote } from "../../services/noteService";
+import { showErrorToast } from "../showErrorToast/showErrorToast";
+import type { NewNote } from "../../types/note";
 
 interface NoteFormProps {
   onCancel: () => void;
-  onSubmit: (values: OrderFormValues) => void;
 }
-const initialValues: OrderFormValues = {
+
+const initialValues: NewNote = {
   title: "",
   content: "",
   tag: "Todo",
 };
 
-export default function NoteForm({ onCancel, onSubmit }: NoteFormProps) {
-  const OrderFormSchema = Yup.object().shape({
+export default function NoteForm({ onCancel }: NoteFormProps) {
+  const queryClient = useQueryClient();
+
+  const { mutate } = useMutation({
+    mutationFn: (newNote: NewNote) => createNote(newNote),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["note"] });
+      onCancel();
+    },
+    onError: () => {
+      showErrorToast("Error creating note");
+    },
+  });
+
+  const validationSchema = Yup.object().shape({
     title: Yup.string()
-      .min(3, "Name must be at least 2 characters")
-      .max(50, "Name is too long")
-      .required("Name is required"),
-    content: Yup.string()
-      .max(500, "Content is too long")
-      .required("Content is required"),
-    tag: Yup.string()
+      .min(3, "Title must be at least 3 characters")
+      .max(50, "Title is too long")
+      .required("Title is required"),
+    content: Yup.string().max(500, "Content is too long"),
+    tag: Yup.mixed<NewNote["tag"]>()
       .oneOf(["Todo", "Work", "Personal", "Meeting", "Shopping"], "Invalid tag")
       .required("Tag is required"),
   });
 
-  const handleSubmit = (
-    values: OrderFormValues,
-    actions: FormikHelpers<OrderFormValues>
-  ) => {
-    onSubmit(values);
+  const handleSubmit = (values: NewNote, actions: FormikHelpers<NewNote>) => {
+    mutate(values);
     actions.resetForm();
-    onCancel();
   };
 
   return (
     <Formik
       initialValues={initialValues}
-      validationSchema={OrderFormSchema}
+      validationSchema={validationSchema}
       onSubmit={handleSubmit}
     >
       <Form className={css.form}>

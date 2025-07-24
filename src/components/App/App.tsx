@@ -2,12 +2,11 @@ import css from "./App.module.css";
 import { useState, useEffect, useRef } from "react";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { useDebouncedCallback } from "use-debounce";
-import type { OrderFormValues } from "../NoteForm/NoteForm";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { showErrorToast } from "../showErrorToast/showErrorToast";
 import { ToastContainer } from "react-toastify";
 
-import { fetchNotes, createNote, deleteNote } from "../../services/noteService";
+import { fetchNotes } from "../../services/noteService";
+import { showErrorToast } from "../showErrorToast/showErrorToast";
+
 import NoteList from "../NoteList/NoteList";
 import Pagination from "../Pagination/Pagination";
 import SearchBox from "../SearchBox/SearchBox";
@@ -31,37 +30,11 @@ export default function App() {
     updateSearchQuery(value);
   };
 
-  const handleFormSubmit = (values: OrderFormValues) => {
-    createNoteMutation(values);
-  };
-
   const { data, isLoading, isError, isSuccess } = useQuery({
     queryKey: ["note", searchQuery, currentPage],
     queryFn: () => fetchNotes(searchQuery, currentPage),
     placeholderData: keepPreviousData,
   });
-
-  const queryClient = useQueryClient();
-
-  const { mutate: createNoteMutation } = useMutation({
-    mutationFn: createNote,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["note"] });
-      setModalOpen(false);
-    },
-    onError: () => {
-      showErrorToast("Error creating note");
-    },
-  });
-
-  const handleDeleteNote = async (id: number) => {
-    try {
-      await deleteNote(id);
-      queryClient.invalidateQueries({ queryKey: ["note"] });
-    } catch {
-      showErrorToast("Error deleting note");
-    }
-  };
 
   const totalPages = data?.totalPages || 0;
 
@@ -80,7 +53,7 @@ export default function App() {
 
   useEffect(() => {
     if (isError) {
-      showErrorToast("Помилка");
+      showErrorToast("Error");
     }
   }, [isError]);
 
@@ -89,38 +62,29 @@ export default function App() {
   }, [searchQuery]);
 
   return (
-    <>
-      <div className={css.app}>
-        <header className={css.toolbar}>
-          {<SearchBox onChange={handleInputChange} value={inputValue} />}
-          {totalPages > 0 && (
-            <Pagination
-              totalPages={totalPages}
-              currentPage={currentPage}
-              onPageChange={setCurrentPage}
-            />
-          )}
-          {
-            <button onClick={() => setModalOpen(true)} className={css.button}>
-              Create note +
-            </button>
-          }
-          {isModalOpen && (
-            <Modal onClose={() => setModalOpen(false)}>
-              <NoteForm
-                onCancel={() => setModalOpen(false)}
-                onSubmit={handleFormSubmit}
-              />
-            </Modal>
-          )}
-        </header>
-        {isLoading && <Loader />}
-        {isSuccess && (
-          <NoteList notes={data.notes} onClick={handleDeleteNote} />
+    <div className={css.app}>
+      <header className={css.toolbar}>
+        <SearchBox onChange={handleInputChange} value={inputValue} />
+        {totalPages > 0 && (
+          <Pagination
+            totalPages={totalPages}
+            currentPage={currentPage}
+            onPageChange={setCurrentPage}
+          />
         )}
-        {isError}
-        <ToastContainer />
-      </div>
-    </>
+        <button onClick={() => setModalOpen(true)} className={css.button}>
+          Create note +
+        </button>
+        {isModalOpen && (
+          <Modal onClose={() => setModalOpen(false)}>
+            <NoteForm onCancel={() => setModalOpen(false)} />
+          </Modal>
+        )}
+      </header>
+
+      {isLoading && <Loader />}
+      {isSuccess && <NoteList notes={data.notes} />}
+      <ToastContainer />
+    </div>
   );
 }
